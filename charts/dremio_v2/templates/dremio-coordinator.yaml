@@ -87,6 +87,10 @@ spec:
           name: server-fabric
         - containerPort: 45679
           name: server-conduit
+        {{- if and $.Values.phonehome.enabled (eq $.Values.phonehome.enabled true)}}
+        - containerPort: {{ $.Values.phonehome.metrics.port }}
+          name: metrics
+        {{- end }}
         startupProbe:
           httpGet:
             path: /

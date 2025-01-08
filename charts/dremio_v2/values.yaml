@@ -33,6 +33,27 @@ podLabels: {}
 nodeSelector: {}
 tolerations: []
 
+# Dremio PhoneHome
+phonehome:
+  # When enabled telemetry data is posted to dremio
+  enabled: true
+  server:
+    endpoint: phonehome.app.drem.io:80
+  metrics:
+    port: 9090
+    scrapeInterval: 5m
+
+  telemetry:
+    # The specific image to be used for telemetry collector
+    # DO NOT change this unless specifically notified by Dremio
+    image: otel/opentelemetry-collector-contrib:0.117.0
+    # CPU & Memory
+    # CPU allocated to the telemetry collector pod
+    cpu: 2
+    # Memory allocated to telemetry collector pod
+    memory: 2048
+
+    
 # Dremio Coordinator
 coordinator:
   # CPU & Memory

@@ -36,3 +36,14 @@ data:
 ---
 {{- end -}}
 {{- end -}}
+
+{{- if and $.Values.phonehome.enabled (eq $.Values.phonehome.enabled true) }}
+# Configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dremio-telemetry-config
+data:
+  {{- tpl ($.Files.Glob "config/telemetry/*").AsConfig . | nindent 2 }}
+---
+{{- end }}

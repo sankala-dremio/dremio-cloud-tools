@@ -76,6 +76,9 @@ Admin - Pod Annotations
 {{- if $adminPodAnnotations -}}
 annotations:
   {{- toYaml $adminPodAnnotations | nindent 2 }}
+  {{- if and $.Values.phonehome.enabled (eq $.Values.phonehome.enabled true) }}
+  dremio.app/scrape_port: {{ $.Values.phonehome.metrics.port }}
+  {{- end }}
 {{- end -}}
 {{- end -}}
 

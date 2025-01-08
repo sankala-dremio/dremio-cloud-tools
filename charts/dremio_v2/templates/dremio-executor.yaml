@@ -88,6 +88,10 @@ spec:
           name: server-fabric
         - containerPort: 45679
           name: server-conduit
+        {{- if and $.Values.phonehome.enabled (eq $.Values.phonehome.enabled true)}}
+        - containerPort: {{ $.Values.phonehome.metrics.port }}
+          name: metrics
+        {{- end }}
         {{- include "dremio.executor.metricsPort" (list $ $engineName) | nindent 8 }}
       initContainers:
       {{- include "dremio.executor.extraInitContainers" (list $ $engineName) | nindent 6 }}

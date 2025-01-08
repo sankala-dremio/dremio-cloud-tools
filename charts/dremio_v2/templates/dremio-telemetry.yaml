@@ -1,0 +1,177 @@
+
+{{- if and $.Values.phonehome.enabled (eq $.Values.phonehome.enabled true) }}
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: telemetry-collector
+  name: telemetry-collector-sa
+---
+# Role for telemetry observer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: telemetry-role
+  labels:
+    app: telemetry-collector
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+      - pods
+      - pods/status
+      - replicationcontrollers
+      - replicationcontrollers/status
+      - resourcequotas
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+      - deployments
+      - replicasets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
+      - daemonsets
+      - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: telemetry-rolebinding
+  labels:
+    app: telemetry-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: telemetry-role
+subjects:
+- kind: ServiceAccount
+  name: telemetry-collector-sa
+---
+# StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: telemetry-collector
+  labels:
+    app: telemetry-collector
+spec:
+  selector:
+    matchLabels:
+      app: telemetry-collector
+  serviceName: telemetry-collector-hs
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: telemetry-collector        
+    spec:
+      containers:
+      - name: otelcollector
+        image: {{ $.Values.phonehome.telemetry.image }}
+        imagePullPolicy: "IfNotPresent"
+        resources:
+          requests:
+            cpu: {{ $.Values.phonehome.telemetry.cpu }}
+            memory: {{ $.Values.phonehome.telemetry.memory }}Mi
+        volumeMounts:
+          - name: telemetry-config
+            mountPath: /opt/dremio/conf
+        command: ["/otelcol-contrib"]
+        args: [
+          "--config",
+          "/opt/dremio/conf/dremio-telemetry.yaml"
+        ]
+        env:
+        - name: CONTAINER_NAME
+          value: "telemetry-collector"
+        - name: NAMESPACE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        ports:
+        - name: grpc-otlp
+          containerPort: 4317
+        - name: health-point
+          containerPort: 9091
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9091
+          periodSeconds: 5
+          failureThreshold: 2
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9091
+          periodSeconds: 5
+          failureThreshold: 5
+        startupProbe:
+          httpGet:
+            path: /
+            port: 9091
+          periodSeconds: 5
+          failureThreshold: 4
+      serviceAccountName: telemetry-collector-sa
+      volumes:
+        - name: telemetry-config
+          configMap: 
+            name: dremio-telemetry-config
+---
+# Service definition
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry-collector-hs
+  labels:
+    app: telemetry-collector
+spec:
+  ports:
+  - name: grpc-otlp
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
+  clusterIP: None
+  selector:
+    app: telemetry-collector
+{{- end }}
